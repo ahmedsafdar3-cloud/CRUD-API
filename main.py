@@ -1,6 +1,14 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 app = FastAPI(title="Task API")
+
+# In-memory "database" — resets every time the server restarts
+tasks = [
+    {"id": 1, "title": "Buy milk", "done": False},
+    {"id": 2, "title": "Walk the dog", "done": False},
+    {"id": 3, "title": "Finish assignment", "done": True},
+]
 
 
 @app.get("/")
@@ -15,3 +23,19 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/tasks")
+def get_tasks():
+    return tasks
+
+
+@app.get("/tasks/{task_id}")
+def get_task(task_id: int):
+    for task in tasks:
+        if task["id"] == task_id:
+            return task
+    return JSONResponse(
+        status_code=404,
+        content={"error": f"Task {task_id} not found"},
+    )
