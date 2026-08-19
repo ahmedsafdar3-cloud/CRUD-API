@@ -60,3 +60,37 @@ def create_task(task: TaskIn):
     new_task = {"id": next_id, "title": title, "done": False}
     tasks.append(new_task)
     return JSONResponse(status_code=201, content=new_task)
+
+
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, task: TaskIn):
+    title = task.title.strip()
+    if not title:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "title is required and cannot be empty"},
+        )
+
+    for existing in tasks:
+        if existing["id"] == task_id:
+            existing["title"] = title
+            existing["done"] = task.done
+            return existing
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": f"Task {task_id} not found"},
+    )
+
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    for existing in tasks:
+        if existing["id"] == task_id:
+            tasks.remove(existing)
+            return JSONResponse(status_code=204, content=None)
+
+    return JSONResponse(
+        status_code=404,
+        content={"error": f"Task {task_id} not found"},
+    )
