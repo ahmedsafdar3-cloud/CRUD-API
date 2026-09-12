@@ -1,44 +1,14 @@
 from fastapi import FastAPI, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import sqlite3
 
-
-# -------------------------
-# DATABASE SETUP
-# -------------------------
-
-connection = sqlite3.connect("tasks.db", check_same_thread=False)
-cursor = connection.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY,
-    title TEXT,
-    done INTEGER
+from repository import (
+    get_all_tasks,
+    get_task,
+    create_task,
+    update_task,
+    delete_task,
 )
-""")
-
-cursor.execute("SELECT COUNT(*) FROM tasks")
-count = cursor.fetchone()[0]
-
-if count == 0:
-    cursor.execute(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        ("Buy milk", 0)
-    )
-
-    cursor.execute(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        ("Walk the dog", 0)
-    )
-
-    cursor.execute(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        ("Finish assignment", 1)
-    )
-
-connection.commit()
 
 
 # -------------------------
@@ -81,21 +51,7 @@ def health_check():
 
 @app.get("/tasks")
 def get_tasks():
-    cursor.execute("SELECT * FROM tasks")
-    rows = cursor.fetchall()
-
-    tasks = []
-
-    for row in rows:
-        task = {
-            "id": row[0],
-            "title": row[1],
-            "done": bool(row[2])
-        }
-
-        tasks.append(task)
-
-    return tasks
+    return get_all_tasks()
 
 
 # -------------------------
@@ -103,26 +59,15 @@ def get_tasks():
 # -------------------------
 
 @app.get("/tasks/{task_id}")
-def get_task(task_id: int):
+def get_one_task(task_id: int):
 
-    cursor.execute(
-        "SELECT * FROM tasks WHERE id = ?",
-        (task_id,)
-    )
+    task = get_task(task_id)
 
-    row = cursor.fetchone()
-
-    if row is None:
+    if task is None:
         return JSONResponse(
             status_code=404,
             content={"error": "Task not found"}
         )
-
-    task = {
-        "id": row[0],
-        "title": row[1],
-        "done": bool(row[2])
-    }
 
     return task
 
@@ -132,7 +77,7 @@ def get_task(task_id: int):
 # -------------------------
 
 @app.post("/tasks", status_code=201)
-def create_task(task: TaskIn):
+def create_new_task(task: TaskIn):
 
     title = task.title.strip()
 
@@ -142,20 +87,7 @@ def create_task(task: TaskIn):
             content={"error": "title is required and cannot be empty"},
         )
 
-    cursor.execute(
-        "INSERT INTO tasks (title, done) VALUES (?, ?)",
-        (title, 0)
-    )
-
-    connection.commit()
-
-    new_id = cursor.lastrowid
-
-    new_task = {
-        "id": new_id,
-        "title": title,
-        "done": False
-    }
+    new_task = create_task(title, False)
 
     return JSONResponse(
         status_code=201,
@@ -168,7 +100,7 @@ def create_task(task: TaskIn):
 # -------------------------
 
 @app.put("/tasks/{task_id}")
-def update_task(task_id: int, task: TaskIn):
+def update_existing_task(task_id: int, task: TaskIn):
 
     title = task.title.strip()
 
@@ -178,31 +110,17 @@ def update_task(task_id: int, task: TaskIn):
             content={"error": "title is required and cannot be empty"},
         )
 
-    cursor.execute(
-        "SELECT * FROM tasks WHERE id = ?",
-        (task_id,)
+    updated_task = update_task(
+        task_id,
+        title,
+        task.done
     )
 
-    row = cursor.fetchone()
-
-    if row is None:
+    if updated_task is None:
         return JSONResponse(
             status_code=404,
             content={"error": f"Task {task_id} not found"},
         )
-
-    cursor.execute(
-        "UPDATE tasks SET title = ?, done = ? WHERE id = ?",
-        (title, int(task.done), task_id)
-    )
-
-    connection.commit()
-
-    updated_task = {
-        "id": task_id,
-        "title": title,
-        "done": task.done
-    }
 
     return updated_task
 
@@ -212,26 +130,14 @@ def update_task(task_id: int, task: TaskIn):
 # -------------------------
 
 @app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int):
+def delete_existing_task(task_id: int):
 
-    cursor.execute(
-        "SELECT * FROM tasks WHERE id = ?",
-        (task_id,)
-    )
+    deleted = delete_task(task_id)
 
-    row = cursor.fetchone()
-
-    if row is None:
+    if not deleted:
         return JSONResponse(
             status_code=404,
             content={"error": f"Task {task_id} not found"},
         )
-
-    cursor.execute(
-        "DELETE FROM tasks WHERE id = ?",
-        (task_id,)
-    )
-
-    connection.commit()
 
     return Response(status_code=204)
