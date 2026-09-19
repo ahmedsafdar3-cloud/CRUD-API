@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Response
+from supabase_client import supabase
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
@@ -17,12 +18,34 @@ from repository import (
 
 app = FastAPI(title="Task API")
 
-
 class TaskIn(BaseModel):
     title: str = ""
     done: bool = False
 
 
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/auth/login")
+def login(credentials: AuthRequest):
+    try:
+        response = supabase.auth.sign_in_with_password({
+            "email": credentials.email,
+            "password": credentials.password,
+        })
+
+        return {
+            "message": "Login successful",
+            "access_token": response.session.access_token,
+            "token_type": "bearer",
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)},
+        )    
 # -------------------------
 # ROOT
 # -------------------------
@@ -44,6 +67,24 @@ def read_root():
 def health_check():
     return {"status": "ok"}
 
+@app.post("/auth/signup")
+def signup(credentials: AuthRequest):
+    try:
+        response = supabase.auth.sign_up({
+            "email": credentials.email,
+            "password": credentials.password,
+        })
+
+        return {
+            "message": "Signup successful. Check your email to confirm your account.",
+            "user_id": str(response.user.id) if response.user else None,
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)},
+        )
 
 # -------------------------
 # GET ALL TASKS
