@@ -24,11 +24,18 @@ class TaskIn(BaseModel):
 
 
 class AuthRequest(BaseModel):
-    email: str
-    password: str
+    email: str = ""
+    password: str = ""
 
 @app.post("/auth/login")
 def login(credentials: AuthRequest):
+
+    if not credentials.email.strip() or not credentials.password.strip():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "email and password are required"},
+        )
+
     try:
         response = supabase.auth.sign_in_with_password({
             "email": credentials.email,
@@ -36,16 +43,16 @@ def login(credentials: AuthRequest):
         })
 
         return {
-            "message": "Login successful",
             "access_token": response.session.access_token,
+            "refresh_token": response.session.refresh_token,
             "token_type": "bearer",
         }
 
-    except Exception as e:
+    except Exception:
         return JSONResponse(
-            status_code=400,
-            content={"error": str(e)},
-        )    
+            status_code=401,
+            content={"error": "Invalid login credentials"},
+        )   
 # -------------------------
 # ROOT
 # -------------------------
@@ -68,24 +75,34 @@ def health_check():
     return {"status": "ok"}
 
 @app.post("/auth/signup")
+@app.post("/auth/signup", status_code=201)
 def signup(credentials: AuthRequest):
+
+    if not credentials.email.strip() or not credentials.password.strip():
+        return JSONResponse(
+            status_code=400,
+            content={"error": "email and password are required"},
+        )
+
     try:
         response = supabase.auth.sign_up({
             "email": credentials.email,
             "password": credentials.password,
         })
 
-        return {
-            "message": "Signup successful. Check your email to confirm your account.",
-            "user_id": str(response.user.id) if response.user else None,
-        }
+        return JSONResponse(
+            status_code=201,
+            content={
+                "message": "Signup successful",
+                "user_id": str(response.user.id) if response.user else None,
+            },
+        )
 
     except Exception as e:
         return JSONResponse(
             status_code=400,
             content={"error": str(e)},
         )
-
 # -------------------------
 # GET ALL TASKS
 # -------------------------
