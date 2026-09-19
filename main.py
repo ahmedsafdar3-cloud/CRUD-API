@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Response, Header, Depends
+from fastapi import FastAPI, Response, Depends
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
 from supabase_client import supabase
@@ -18,6 +19,8 @@ from repository import (
 # -------------------------
 
 app = FastAPI(title="Task API")
+
+security = HTTPBearer(auto_error=False)
 
 
 # -------------------------
@@ -56,16 +59,16 @@ async def auth_error_handler(request, exc: AuthError):
 # -------------------------
 
 def get_current_user(
-    authorization: str | None = Header(default=None)
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
 
-    if not authorization:
+    if credentials is None:
         raise AuthError("Access token required")
 
-    if not authorization.startswith("Bearer "):
+    if credentials.scheme.lower() != "bearer":
         raise AuthError("Access token required")
 
-    token = authorization.removeprefix("Bearer ").strip()
+    token = credentials.credentials.strip()
 
     if not token:
         raise AuthError("Access token required")
@@ -101,7 +104,7 @@ def health_check():
 
 
 # -------------------------
-# PUBLIC ROUTE
+# PUBLIC INFO
 # -------------------------
 
 @app.get("/public/info")
