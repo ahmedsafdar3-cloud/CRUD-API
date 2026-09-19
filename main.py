@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Response, Header
-from supabase_client import supabase
+from fastapi import FastAPI, Response, Header, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+
+from supabase_client import supabase
 
 from repository import (
     get_all_tasks,
@@ -18,6 +19,11 @@ from repository import (
 
 app = FastAPI(title="Task API")
 
+
+# -------------------------
+# MODELS
+# -------------------------
+
 class TaskIn(BaseModel):
     title: str = ""
     done: bool = False
@@ -26,6 +32,78 @@ class TaskIn(BaseModel):
 class AuthRequest(BaseModel):
     email: str = ""
     password: str = ""
+
+
+# -------------------------
+# AUTH ERROR
+# -------------------------
+
+class AuthError(Exception):
+    def __init__(self, message: str):
+        self.message = message
+
+
+@app.exception_handler(AuthError)
+async def auth_error_handler(request, exc: AuthError):
+    return JSONResponse(
+        status_code=401,
+        content={"error": exc.message},
+    )
+
+
+# -------------------------
+# REUSABLE AUTH DEPENDENCY
+# -------------------------
+
+def get_current_user(
+    authorization: str | None = Header(default=None)
+):
+
+    if not authorization:
+        raise AuthError("Access token required")
+
+    if not authorization.startswith("Bearer "):
+        raise AuthError("Access token required")
+
+    token = authorization.removeprefix("Bearer ").strip()
+
+    if not token:
+        raise AuthError("Access token required")
+
+    try:
+        response = supabase.auth.get_user(token)
+        return response.user
+
+    except Exception:
+        raise AuthError("Invalid or expired token")
+
+
+# -------------------------
+# ROOT
+# -------------------------
+
+@app.get("/")
+def read_root():
+    return {
+        "name": "Task API",
+        "version": "1.0",
+        "endpoints": ["/tasks"],
+    }
+
+
+# -------------------------
+# HEALTH
+# -------------------------
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
+
+# -------------------------
+# PUBLIC ROUTE
+# -------------------------
+
 @app.get("/public/info")
 def public_info():
     return {
@@ -33,45 +111,46 @@ def public_info():
     }
 
 
-@app.get("/protected/profile")
-def protected_profile(authorization: str | None = Header(default=None)):
+# -------------------------
+# SIGNUP
+# -------------------------
 
-    if not authorization:
+@app.post("/auth/signup", status_code=201)
+def signup(credentials: AuthRequest):
+
+    if not credentials.email.strip() or not credentials.password.strip():
         return JSONResponse(
-            status_code=401,
-            content={"error": "Access token required"},
-        )
-
-    if not authorization.startswith("Bearer "):
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Access token required"},
-        )
-
-    token = authorization.removeprefix("Bearer ").strip()
-
-    if not token:
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Access token required"},
+            status_code=400,
+            content={"error": "email and password are required"},
         )
 
     try:
-        response = supabase.auth.get_user(token)
+        response = supabase.auth.sign_up({
+            "email": credentials.email,
+            "password": credentials.password,
+        })
 
-        user = response.user
-
-        return {
-            "id": str(user.id),
-            "email": user.email,
-            "created_at": str(user.created_at),
-        }
-
-    except Exception:
         return JSONResponse(
-            status_code=401,
-            content={"error": "Invalid or expired token"},
+            status_code=201,
+            content={
+                "message": "Signup successful",
+                "user_id": str(response.user.id)
+                if response.user
+                else None,
+            },
         )
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)},
+        )
+
+
+# -------------------------
+# LOGIN
+# -------------------------
+
 @app.post("/auth/login")
 def login(credentials: AuthRequest):
 
@@ -97,57 +176,57 @@ def login(credentials: AuthRequest):
         return JSONResponse(
             status_code=401,
             content={"error": "Invalid login credentials"},
-        )   
+        )
+
+
 # -------------------------
-# ROOT
+# PROTECTED PROFILE
 # -------------------------
 
-@app.get("/")
-def read_root():
+@app.get("/protected/profile")
+def protected_profile(
+    user=Depends(get_current_user)
+):
     return {
-        "name": "Task API",
-        "version": "1.0",
-        "endpoints": ["/tasks"],
+        "id": str(user.id),
+        "email": user.email,
+        "created_at": str(user.created_at),
     }
 
 
 # -------------------------
-# HEALTH
+# PROTECTED DASHBOARD
 # -------------------------
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+@app.get("/protected/dashboard")
+def protected_dashboard(
+    user=Depends(get_current_user)
+):
+    return {
+        "message": "Welcome to your dashboard",
+        "email": user.email,
+    }
 
-@app.post("/auth/signup")
-@app.post("/auth/signup", status_code=201)
-def signup(credentials: AuthRequest):
 
-    if not credentials.email.strip() or not credentials.password.strip():
-        return JSONResponse(
-            status_code=400,
-            content={"error": "email and password are required"},
-        )
+# -------------------------
+# LOGOUT
+# -------------------------
 
+@app.post("/auth/logout", status_code=204)
+def logout(
+    user=Depends(get_current_user)
+):
     try:
-        response = supabase.auth.sign_up({
-            "email": credentials.email,
-            "password": credentials.password,
-        })
+        supabase.auth.sign_out()
+        return Response(status_code=204)
 
-        return JSONResponse(
-            status_code=201,
-            content={
-                "message": "Signup successful",
-                "user_id": str(response.user.id) if response.user else None,
-            },
-        )
-
-    except Exception as e:
+    except Exception:
         return JSONResponse(
             status_code=400,
-            content={"error": str(e)},
+            content={"error": "Logout failed"},
         )
+
+
 # -------------------------
 # GET ALL TASKS
 # -------------------------
@@ -169,7 +248,7 @@ def get_one_task(task_id: int):
     if task is None:
         return JSONResponse(
             status_code=404,
-            content={"error": "Task not found"}
+            content={"error": "Task not found"},
         )
 
     return task
@@ -187,14 +266,16 @@ def create_new_task(task: TaskIn):
     if not title:
         return JSONResponse(
             status_code=400,
-            content={"error": "title is required and cannot be empty"},
+            content={
+                "error": "title is required and cannot be empty"
+            },
         )
 
     new_task = create_task(title, False)
 
     return JSONResponse(
         status_code=201,
-        content=new_task
+        content=new_task,
     )
 
 
@@ -203,20 +284,25 @@ def create_new_task(task: TaskIn):
 # -------------------------
 
 @app.put("/tasks/{task_id}")
-def update_existing_task(task_id: int, task: TaskIn):
+def update_existing_task(
+    task_id: int,
+    task: TaskIn,
+):
 
     title = task.title.strip()
 
     if not title:
         return JSONResponse(
             status_code=400,
-            content={"error": "title is required and cannot be empty"},
+            content={
+                "error": "title is required and cannot be empty"
+            },
         )
 
     updated_task = update_task(
         task_id,
         title,
-        task.done
+        task.done,
     )
 
     if updated_task is None:
