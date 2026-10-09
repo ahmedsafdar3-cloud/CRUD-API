@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import ValidationError
 
 from src.llm.schema import STUB, TriageInput, TriageOutput
+from src.llm.service import classify
 
 router = APIRouter()
 
@@ -22,4 +23,4 @@ async def triage(request: Request):
         raise HTTPException(400, detail={"message": "Body must be valid JSON", "field": "body"})
     if os.getenv("LLM_STUB") == "1":
         return STUB
-    raise HTTPException(503, detail="Model integration is not configured yet")
+    return await classify(payload.text)
