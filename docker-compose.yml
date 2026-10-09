@@ -18,10 +18,13 @@ services:
 
   api:
     build: .
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgres://postgres:dev@db:5432/tasks
+      LLM_BASE_URL: http://host.docker.internal:11434/v1/
     depends_on:
       db:
         condition: service_healthy
