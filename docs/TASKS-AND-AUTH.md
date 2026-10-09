@@ -346,27 +346,9 @@ Authorization: Bearer <token>
 
 with protected requests.
 
-## Swagger Screenshot
+## Swagger UI
 
-Add the Swagger UI screenshot here.
-
-Example:
-
-```markdown
-![Swagger UI](docs/swagger-auth.png)
-```
-
-Create a `docs` folder in the repository and save the screenshot as:
-
-```text
-docs/swagger-auth.png
-```
-
-Then the image will appear in the README using:
-
-```markdown
-![Swagger UI](docs/swagger-auth.png)
-```
+![Swagger UI with Bearer authentication](swagger-auth.png)
 
 ## HTTP Status Codes
 
@@ -385,7 +367,7 @@ Then the image will appear in the README using:
 
 `403 Forbidden` means the caller has been authenticated successfully, but does not have permission to perform a particular action.
 
-This project currently uses `401` for authentication failures. A role-based `403` authorization case can be added as a stretch feature.
+This project currently uses `401` for authentication failures. Role-based authorization is not currently implemented.
 
 ## Task CRUD Examples
 
@@ -400,7 +382,7 @@ Create a task:
 ```bash
 curl -i -X POST http://localhost:8000/tasks \
   -H "Content-Type: application/json" \
-  -d '{"title":"Finish authentication assignment","done":false}'
+  -d '{"title":"Review account settings","done":false}'
 ```
 
 ## Database Persistence
@@ -451,18 +433,6 @@ docker compose up --build
 ```
 
 No local PostgreSQL installation is required because PostgreSQL runs through Docker Compose.
-
-## Assignment Progress
-
-The project implements the required authentication stages:
-
-- Stage 0 - Supabase and server setup
-- Stage 1 - Signup and login
-- Stage 2 - Public and protected routes
-- Stage 3 - JWT verification
-- Stage 4 - Reusable authentication dependency and logout
-- Stage 5 - Swagger Bearer authentication
-- Stage 6 - GitHub publishing and documentation
 
 ## Author
 

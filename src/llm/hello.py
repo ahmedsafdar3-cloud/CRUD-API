@@ -1,4 +1,4 @@
-"""Stage 0: python -m src.llm.hello"""
+"""Provider smoke check: python -m src.llm.hello"""
 import os
 
 from dotenv import load_dotenv

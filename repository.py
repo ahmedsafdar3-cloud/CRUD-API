@@ -46,7 +46,7 @@ def seed_tasks():
 
             cursor.execute(
                 "INSERT INTO tasks (title, done) VALUES (%s, %s)",
-                ("Finish assignment", True)
+                ("Review project documentation", True)
             )
 
     connection.commit()

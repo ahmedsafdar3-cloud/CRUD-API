@@ -1,4 +1,4 @@
-# Job card
+# Endpoint contract
 
 What it does: Classifies a SaaS support message so a human can send it to the right team.
 

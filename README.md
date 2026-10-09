@@ -36,7 +36,7 @@ Deliberately invalid request (HTTP 400, names the `text` field, no model call):
 curl -X POST http://127.0.0.1:8000/triage -H "Content-Type: application/json" -d '{}'
 ```
 
-## Job card
+## Endpoint contract
 
 What it does: Classifies a SaaS support message so a human can send it to the right team.
 
@@ -66,7 +66,7 @@ LLM_API_KEY=ollama
 LLM_MODEL=qwen2.5-coder:7b
 ```
 
-Ollama ignores the literal dummy key `ollama`. A hosted provider needs its own real key, kept in `.env`, and may have different model capabilities and prices. Only local Ollama was evaluated for this submission.
+Ollama ignores the literal dummy key `ollama`. A hosted provider needs its own real key, kept in `.env`, and may have different model capabilities and prices. Only local Ollama was evaluated for this project.
 
 ## Real evaluation
 
@@ -86,7 +86,7 @@ With the API running:
 python evals/run.py
 ```
 
-This calls the real endpoint eight times and writes a new report. Use `--output evals/results-latest.json` to preserve the submitted report. Stub-mode results do not count as model evaluation.
+This calls the real endpoint eight times and writes a new report. Use `--output evals/results-latest.json` to preserve the baseline report. Stub-mode results do not count as model evaluation.
 
 ## Usage log and cost
 
@@ -112,7 +112,7 @@ At 10,000 requests per day, local Ollama provider fees are **$0/day**; hardware 
 
 One structured call-log row is written for every provider attempt, including failure: prompt version, model, tokens, duration, repair count, attempt, status, and estimated cost. Rejected output is stored separately in `logs/quarantine.jsonl` with input, output, validation error, and version. Logs are ignored by Git; quarantine may contain user content and should remain private.
 
-## What I would fix with another day
+## Known limitations and next steps
 
 Add more outage and ambiguous-message examples, test a more suitable general-purpose model, and compare against this baseline. The current model produced structurally correct JSON with the wrong category for an outage. A schema cannot catch that semantic error.
 
@@ -151,7 +151,7 @@ ollama list
 .venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Keep an existing `.env` instead of overwriting it. The template includes working local LLM values and placeholders for the existing database/authentication routes. `/triage`, `/health`, and `/docs` run without PostgreSQL or Supabase. The task and authentication routes still require their original services and credentials: see [existing API setup](docs/EXISTING-API.md).
+Keep an existing `.env` instead of overwriting it. The template includes working local LLM values and placeholders for the existing database/authentication routes. `/triage`, `/health`, and `/docs` run without PostgreSQL or Supabase. The task and authentication routes still require their original services and credentials: see [existing API setup](docs/TASKS-AND-AUTH.md).
 
 Open **http://127.0.0.1:8000/docs** and try POST /triage. Use the appropriate virtual-environment Python executable for tests/evals if it is not activated.
 
@@ -196,14 +196,14 @@ Docker Desktop must be running. For the original API and database together:
 docker compose up --build
 ```
 
-Compose loads `.env` and overrides the LLM URL to `http://host.docker.internal:11434/v1/` so the container can reach host Ollama on Windows Docker Desktop. For a hosted provider, change that Compose override too. Ollama must accept the container's connection; if needed start it with `OLLAMA_HOST=0.0.0.0:11434` on a trusted machine/network. The validated Week 7 path uses native Python; Docker Desktop was not running during verification, so the container path was not tested.
+Compose loads `.env` and overrides the LLM URL to `http://host.docker.internal:11434/v1/` so the container can reach host Ollama on Windows Docker Desktop. For a hosted provider, change that Compose override too. Ollama must accept the container's connection; if needed start it with `OLLAMA_HOST=0.0.0.0:11434` on a trusted machine/network. The verified runtime uses native Python; Docker Desktop was not running during verification, so the container path was not tested.
 
 `.dockerignore` excludes `.env`, logs, the virtual environment, Git history, and local database artifacts from the build context.
 
-## Files and learning
+## Project structure
 
 ```text
-main.py                    existing FastAPI app + new router
+main.py                    FastAPI application and route registration
 src/routes/triage.py       input validation and mode switches
 src/llm/schema.py          strict input/output contracts
 src/llm/service.py         prompt loading, repair, quarantine, total deadline
@@ -217,11 +217,8 @@ evals/results.json         recorded real model results
 tests/test_triage.py       failure-path and contract checks
 JOB-CARD.md                job definition
 .env.example               configuration template
-docs/LEARNING-GUIDE.md      explanation of the whole assignment
-docs/EXISTING-API.md        previous task/authentication documentation
+docs/TASKS-AND-AUTH.md      task and authentication API documentation
 ```
-
-Read [the learning guide](docs/LEARNING-GUIDE.md) to follow every step and practice in VS Code. Six assignment stage commits document the work; previous API history is retained.
 
 AI tools were used for development assistance.
 
