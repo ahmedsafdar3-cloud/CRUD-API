@@ -1,17 +1,21 @@
 import os
 import psycopg
 from dotenv import load_dotenv
+from functools import lru_cache
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-connection = psycopg.connect(DATABASE_URL)
+@lru_cache(maxsize=1)
+def get_connection():
+    return psycopg.connect(DATABASE_URL)
 
 def hello_repository():
     return "Repository connected to PostgreSQL!"
 
 def create_table():
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -24,6 +28,7 @@ def create_table():
     connection.commit()
 
 def seed_tasks():
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute("SELECT COUNT(*) FROM tasks")
         count = cursor.fetchone()[0]
@@ -47,6 +52,7 @@ def seed_tasks():
     connection.commit()
 
 def get_all_tasks():
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute("SELECT * FROM tasks")
         rows = cursor.fetchall()
@@ -65,6 +71,7 @@ def get_all_tasks():
     return tasks
 
 def get_task(task_id):
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute(
             "SELECT * FROM tasks WHERE id = %s",
@@ -83,6 +90,7 @@ def get_task(task_id):
     }
 
 def create_task(title, done=False):
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute(
             "INSERT INTO tasks (title, done) VALUES (%s, %s) RETURNING id",
@@ -100,6 +108,7 @@ def create_task(title, done=False):
     }
 
 def update_task(task_id, title, done):
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute(
             """
@@ -126,6 +135,7 @@ def update_task(task_id, title, done):
     }
 
 def delete_task(task_id):
+    connection = get_connection()
     with connection.cursor() as cursor:
         cursor.execute(
             "DELETE FROM tasks WHERE id = %s RETURNING id",

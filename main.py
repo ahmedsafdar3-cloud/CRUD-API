@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from supabase_client import supabase
+from supabase_client import get_supabase
+from src.routes.triage import router as triage_router
 
 from repository import (
     get_all_tasks,
@@ -19,6 +20,7 @@ from repository import (
 # -------------------------
 
 app = FastAPI(title="Task API")
+app.include_router(triage_router)
 
 security = HTTPBearer(auto_error=False)
 
@@ -74,7 +76,7 @@ def get_current_user(
         raise AuthError("Access token required")
 
     try:
-        response = supabase.auth.get_user(token)
+        response = get_supabase().auth.get_user(token)
         return response.user
 
     except Exception:
@@ -128,7 +130,7 @@ def signup(credentials: AuthRequest):
         )
 
     try:
-        response = supabase.auth.sign_up({
+        response = get_supabase().auth.sign_up({
             "email": credentials.email,
             "password": credentials.password,
         })
@@ -164,7 +166,7 @@ def login(credentials: AuthRequest):
         )
 
     try:
-        response = supabase.auth.sign_in_with_password({
+        response = get_supabase().auth.sign_in_with_password({
             "email": credentials.email,
             "password": credentials.password,
         })
@@ -220,7 +222,7 @@ def logout(
     user=Depends(get_current_user)
 ):
     try:
-        supabase.auth.sign_out()
+        get_supabase().auth.sign_out()
         return Response(status_code=204)
 
     except Exception:
