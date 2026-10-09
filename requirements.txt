@@ -3,3 +3,5 @@ uvicorn
 psycopg[binary]
 python-dotenv
 supabase
+openai>=2.29,<3
+pydantic>=2.13,<3
