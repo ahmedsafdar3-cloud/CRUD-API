@@ -221,7 +221,9 @@ docs/LEARNING-GUIDE.md      explanation of the whole assignment
 docs/EXISTING-API.md        previous task/authentication documentation
 ```
 
-Implemented with Codex assistance. The optional handwritten-versus-AI rematch was not performed. Read [the learning guide](docs/LEARNING-GUIDE.md) to follow every step and practice in VS Code. Six assignment stage commits document the work; previous API history is retained.
+Read [the learning guide](docs/LEARNING-GUIDE.md) to follow every step and practice in VS Code. Six assignment stage commits document the work; previous API history is retained.
+
+AI tools were used for development assistance.
 
 Local messages stay on the local Ollama service. Model judgment still needs human review; schema validation and one attack example do not guarantee resistance to every injection.
 

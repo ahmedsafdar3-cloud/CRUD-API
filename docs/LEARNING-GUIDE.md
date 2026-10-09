@@ -1,6 +1,6 @@
 # Understanding the Week 7 assignment
 
-This submission was implemented with Codex assistance. There is no claim that it was written independently by hand. The optional AI-versus-handwritten rematch was not performed.
+This guide explains the support-triage endpoint, its reliability checks, and how to run and test it.
 
 ## 1. What we added
 
